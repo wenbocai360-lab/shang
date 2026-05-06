@@ -393,3 +393,9 @@ make clean
 2. 我们先生成 **任务三的第一个模块**：`iir_fp_dw.v`（DW 浮点单次 IIR 核心）。
 3. 生成 `tb_iir_fp_dw.sv`，先对齐第一遍 IIR。
 4. 第一遍 IIR 对齐后，再生成 `filtfilt_fp_top.v` 的 FSM 骨架。
+
+
+### 关于 DW 浮点库（老师要求）
+
+是的，之前已有的 `rtl/iir4_fixed.v` 与 `rtl/01_iir4_df2t_fixed.v` 是**定点实现**，并没有使用 DW 浮点 IP。  
+现在已新增 `rtl/02_iir4_dw_fp32.v`，使用 `DW_fp_mult / DW_fp_add / DW_fp_sub` 构建 FP32 IIR 核心，便于后续按老师要求走 DW 浮点路线。
