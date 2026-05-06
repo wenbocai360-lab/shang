@@ -483,3 +483,142 @@ vsim -c -do run_tb_filtfilt68_hw.do
 
 - `MAX_ABS_ERR`：和老师参考输出的最大绝对误差
 - `done` 是否按预期拉高，且输出点数是否恰好 68 点
+
+
+## 在 Quartus 里打开工程并跑测试（详细实操版）
+
+下面按“你第一次上手就能跑通”的顺序写：
+
+### 0. 先确认文件结构
+
+你至少需要这些文件：
+
+- RTL：
+  - `rtl/01_iir4_df2t_fixed.v`
+  - `rtl/filtfilt68_hw.v`
+- Testbench：
+  - `tb/tb_filtfilt68_hw.sv`
+- 仿真脚本：
+  - `sim/run_tb_filtfilt68_hw.do`
+
+---
+
+### 1. 新建 Quartus 工程
+
+1. 打开 Quartus Prime。
+2. `File -> New Project Wizard`。
+3. `Working directory` 选仓库根目录（例如 `.../shang`）。
+4. `Project name` 可填：`filtfilt68_hw_prj`。
+5. `Top-level entity` 先填：`filtfilt68_hw`。
+6. 在 “Add Files” 页面加入：
+   - `rtl/01_iir4_df2t_fixed.v`
+   - `rtl/filtfilt68_hw.v`
+7. 选择开发板对应器件（不知道就先按板卡手册选 Cyclone 型号）。
+8. Finish 完成建工程。
+
+---
+
+### 2. 先做语法/综合检查（不仿真）
+
+1. `Processing -> Start -> Start Analysis & Elaboration`
+2. 若报错，优先看：
+   - 顶层名是否是 `filtfilt68_hw`
+   - 文件是否都加进工程
+   - Verilog/SystemVerilog 语法版本设置
+
+> 这一步通过，说明 Quartus 能识别你的硬件代码。
+
+---
+
+### 3. 配置 ModelSim/Questa 联合仿真
+
+1. `Assignments -> Settings -> EDA Tool Settings -> Simulation`
+2. Tool name 选 `ModelSim-Altera` 或 `Questa`（按你安装版本）
+3. Format 选 `Verilog HDL` 或 `SystemVerilog HDL`
+4. Test bench 不一定在这里配置（我们用 `.do` 脚本直接跑）
+
+---
+
+### 4. 用脚本直接跑功能仿真（推荐）
+
+在终端进入 `sim/` 目录，执行：
+
+```bash
+vsim -c -do run_tb_filtfilt68_hw.do
+```
+
+这个脚本会自动：
+
+1. 建 `work` 库
+2. 编译 `rtl/01_iir4_df2t_fixed.v`
+3. 编译 `rtl/filtfilt68_hw.v`
+4. 编译 `tb/tb_filtfilt68_hw.sv`
+5. 运行到结束并退出
+
+日志中你重点看：
+
+- 每个 `idx` 的 `hw/ref/err`
+- 最后 `MAX_ABS_ERR=...`
+
+---
+
+### 5. 如果你想看波形（GUI）
+
+1. 把脚本最后的 `quit -f` 先注释掉。
+2. 用 GUI 启动：
+
+```bash
+vsim -do run_tb_filtfilt68_hw.do
+```
+
+3. 在脚本里取消注释：
+   - `add wave -r sim:/tb_filtfilt68_hw/*`
+4. 重新运行后可在波形窗口观察：
+   - `dut.st`
+   - `dut.idx`
+   - `dut.in_valid/in_ready`
+   - `dut.out_valid/out_data`
+   - `dut.done`
+
+---
+
+### 6. 上板前必须再做的两件事
+
+1. **引脚约束**（`.qsf` / Pin Planner）
+   - 至少分配：`clk`, `rst_n`, `start`, `in_valid`, `in_data[*]`, `out_valid`, `out_data[*]`, `done`
+2. **时钟约束**（`.sdc`）
+   - 例如 50MHz：`create_clock -name clk -period 20.000 [get_ports clk]`
+
+没有这两步，Fitter/TimeQuest 结果通常不可用。
+
+---
+
+### 7. 完整编译与下载
+
+1. `Processing -> Start Compilation`
+2. 看 `Flow Summary` 是否通过
+3. `Tools -> Programmer`
+4. 选择下载线，加载 `.sof`
+5. `Start` 下载
+
+---
+
+### 8. 常见报错排查
+
+1. `Can't find module`：漏加 RTL 文件或文件顺序/路径问题。
+2. `vsim/vlog command not found`：ModelSim 没装或环境变量未配置。
+3. `Top-level entity undefined`：顶层名不一致（必须 `filtfilt68_hw`）。
+4. 输出误差偏大：
+   - 先确认 testbench 输入输出是否完整复制老师给的 68 点
+   - 再检查 Q8.24 换算与四舍五入方式
+
+---
+
+### 9. 你现在可以直接复制的最短命令
+
+```bash
+cd sim
+vsim -c -do run_tb_filtfilt68_hw.do
+```
+
+如果命令跑完并打印 `MAX_ABS_ERR`，说明“代码可编译 + 仿真流程已打通”。
