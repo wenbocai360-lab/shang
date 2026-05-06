@@ -293,3 +293,103 @@ make clean
   - 输入：`in_valid + x_in`
   - 输出：`out_valid + y_out`
   - 控制：`clr_state` 可在前向/反向滤波切换时重装 `zi`
+
+
+## 任务二以后工作流程规划（你已完成 C 版后的下一步）
+
+你现在已经完成任务一（C 版 `filtfilt`），后面建议按 **6 个任务阶段** 推进：
+
+### 任务二：固定“黄金数据”和验收口径（先立标尺）
+
+**目标**：后续 RTL/上板每一步都可量化对比，避免“看起来差不多”。
+
+1. 固化老师给的 68 点输入、68 点输出为 `golden_in.txt` / `golden_out.txt`。
+2. 固化滤波参数：`a/b/zi/order=4/nfact=12`。
+3. 统一误差指标：
+   - `max_abs_error`
+   - `RMSE`
+   - 可附 `SNR`（可选）
+4. 先用你现有 C 程序跑一遍，确认对 `golden_out` 的误差满足阈值。
+
+**交付物**：`golden` 数据文件 + 一页误差报告（表格即可）。
+
+---
+
+### 任务三：浮点硬件架构定版（DW 库）
+
+你提到用 Synopsys DW 浮点库，这是很好的路线。建议：
+
+1. 数值格式：先用 `FP32(IEEE754 single)`，与 `$shortrealtobits` 一致。
+2. IIR 结构：`Direct Form II Transposed`（状态少，利于流水）。
+3. 运算单元：
+   - `DW_fp_mult`
+   - `DW_fp_add` / `DW_fp_sub`
+4. 状态寄存器：`z0~z3` 使用浮点寄存器。
+5. rounding / denorm / NaN 策略先统一（建议与仿真默认一致，先不做特殊分支）。
+
+**交付物**：模块接口文档（时序图 + latency 表）。
+
+---
+
+### 任务四：先做“单次 IIR”可闭环仿真
+
+**目标**：先把最难的数值核跑稳，再做 filtfilt 控制。 
+
+1. 生成 `iir_fp_dw.v`（只做一次 IIR）。
+2. testbench 输入 68 点 `golden_in`，导出 `iir_first_pass_out`。
+3. 与 C 的“第一遍 filter 输出”对比（不是最终 filtfilt 输出）。
+4. 解决：
+   - DW IP 延迟对齐（valid 管线）
+   - 浮点舍入引起的尾差
+
+**交付物**：`iir_fp_dw` 仿真通过记录 + 误差曲线。
+
+---
+
+### 任务五：实现完整 filtfilt FSM（延拓 + 双向滤波 + 翻转 + 还原）
+
+按你给的流程图，建议拆状态：
+
+- `ST_IDLE`
+- `ST_LOAD`
+- `ST_EXTEND_HEAD_TAIL`（做 nfact=12 单边延拓）
+- `ST_IIR_FWD_START / ST_IIR_FWD_RUN`
+- `ST_REVERSE_1`
+- `ST_IIR_BWD_START / ST_IIR_BWD_RUN`
+- `ST_REVERSE_2`
+- `ST_RESTORE_TREND`（若沿用 MATLAB 去趋势/还原趋势流程）
+- `ST_SAVE_DONE`
+
+关键细节：
+
+1. **延拓**：按 `nfact=3*N=12` 做首尾镜像延拓（N=4）。
+2. **翻转**：优先用地址反向访问，不做大规模数据搬移。
+3. **两次 IIR 间状态**：第二次滤波前必须 `zi` 重新装载。
+4. **valid 对齐**：每个状态都要明确“输入有效拍数”和“输出有效拍数”。
+
+**交付物**：`filtfilt_fp_top.v` + 状态跳转表（条件、计数器范围、出口条件）。
+
+---
+
+### 任务六：Quartus 工程化与上板验收
+
+1. Quartus 建工程并加 RTL。
+2. Pin Planner 绑定最小接口（clk/rst/start/data/valid/done）。
+3. ModelSim 联仿先过，再走综合/布局布线。
+4. SignalTap 抓：`state`、`valid`、`z0~z3`、`out_data`。
+5. 回传输出到 PC，与 `golden_out` 自动比对。
+
+**验收建议**：
+- 功能：68 点输出全点可对齐；
+- 精度：`max_abs_error` 在阈值内（可先定 `1e-5 ~ 1e-4` 级，视 DW 配置）；
+- 资源：给出 DSP/ALM/RAM 占用；
+- 性能：给出从 `start` 到 `done` 的总周期。
+
+---
+
+## 你接下来可直接执行的 To-Do（本周版）
+
+1. 整理并入库 `golden_in/out` 文本。
+2. 我们先生成 **任务三的第一个模块**：`iir_fp_dw.v`（DW 浮点单次 IIR 核心）。
+3. 生成 `tb_iir_fp_dw.sv`，先对齐第一遍 IIR。
+4. 第一遍 IIR 对齐后，再生成 `filtfilt_fp_top.v` 的 FSM 骨架。
