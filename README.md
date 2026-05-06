@@ -116,3 +116,20 @@ wire [inst_sig_width+inst_exp_width:0] z3 = $shortrealtobits(-0.1825551490104656
 
 - C 实现位于 `src/filtfilt_fixed.c` / `src/filtfilt_fixed.h`。
 - Demo 程序位于 `src/main.c`，可通过 `make` 编译运行。
+
+
+### Makefile 这个文件是做什么的？
+
+`Makefile` 不是文件夹，它是 **构建脚本文件**。作用是把编译命令统一管理，避免每次手写很长的 `cc ...` 命令。
+
+本项目中它主要提供两个目标：
+
+- `make`：编译生成可执行程序 `filtfilt_demo`
+- `make clean`：删除编译产物 `filtfilt_demo`
+
+对应规则见 `Makefile`：
+
+- 第 1~2 行：编译器与编译参数（开启 `-Wall -Wextra -Werror`）
+- 第 4 行：默认目标 `all`
+- 第 6~7 行：如何把 `src/main.c` 与 `src/filtfilt_fixed.c` 链接成 `filtfilt_demo`
+- 第 9~10 行：清理目标
