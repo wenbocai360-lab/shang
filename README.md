@@ -430,3 +430,13 @@ make clean
   - 输出 `max_abs_error`。
 
 > 结论：我认真读了你给的材料，但你指出得很准确——“DW 完整链路 + 延拓 + 细粒度状态机对齐”这三块需要继续补齐，后续代码会严格按这三点推进。
+
+
+## Quartus/仿真可运行版本（从头实现）
+
+已新增：
+
+- `rtl/filtfilt68_hw.v`：按老师流程实现 `延拓 -> IIR -> 翻转 -> IIR -> 翻转 -> 输出` 的硬件顶层；包含 `ST_WAIT_FIRSTX / ST_START_FILTER_IIR_FIRST / ST_WAIT_FILTER_IIR_FIRST / ST_START_FILTER_IIR_SECOND / ST_WAIT_FILTER_IIR_SECOND / ST_SAVE` 等状态。
+- `tb/tb_filtfilt68_hw.sv`：使用老师给的 68 点输入/输出做逐点误差比对，打印 `MAX_ABS_ERR`。
+
+本版是定点 Q8.24 可综合路径，适合先在 Quartus + ModelSim 跑通流程；DW 浮点版可在该 FSM 基础上替换 IIR 内核。
