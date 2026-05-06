@@ -179,3 +179,43 @@ make clean
 - `rtl/iir4_fixed.v`：固定系数四阶 IIR（Q8.24）。
 - `rtl/filtfilt68_top.v`：68 点批处理 `filtfilt` 顶层 FSM（LOAD -> FWD -> REV1 -> BWD -> REV2OUT）。
 - 使用方式：在 testbench 中按 `start/in_valid/in_data` 灌入 68 点，等待 `done`，在 `out_valid` 时采样输出。
+
+
+### 硬件实现需要写哪些模块（建议清单）
+
+建议至少拆成下面 8 个模块：
+
+1. **顶层控制模块 `filtfilt68_top`**
+   - 负责流程控制（LOAD -> FWD -> REV1 -> BWD -> REV2OUT）
+   - 对外提供 `start/in_valid/in_data/in_ready/out_valid/out_data/done` 接口
+
+2. **IIR 计算核心 `iir4_fixed`**
+   - 4 阶固定系数 IIR（Direct Form II Transposed）
+   - 输入 1 点、输出 1 点，内部维护 `z0~z3`
+
+3. **系数/初值常量模块 `coeff_rom`（可选）**
+   - 存 `a/b/zi`，便于后期改位宽或切换滤波器
+   - 系数固定时也可直接写在 `iir4_fixed` 内部
+
+4. **输入缓存模块 `input_buffer`**
+   - 存 68 点输入（可用单口 RAM 或寄存器阵列）
+   - 支持按顺序读出给前向 IIR
+
+5. **中间缓存模块 `work_buffer`**
+   - 保存前向滤波结果与反向滤波中间结果
+   - 通常和输入缓存分开，减少读写冲突
+
+6. **反转地址发生器 `reverse_addr_gen`**
+   - 负责 `0..67` 与 `67..0` 地址映射
+   - 减少“整块搬移”逻辑，直接用反向地址读写
+
+7. **输出缓冲与接口模块 `output_buffer`**
+   - 缓存最终 68 点结果
+   - 统一对外输出节拍与 `out_valid` 握手
+
+8. **验证/对比模块 `tb + golden_checker`（仿真侧）**
+   - testbench 读入输入向量与 MATLAB 黄金输出
+   - 自动比较误差并打印最大绝对误差
+
+> 最小可运行版本：`filtfilt68_top + iir4_fixed + 双端口RAM(或寄存器数组)` 就能跑通；
+> 为了工程可维护性，建议把地址反转、缓存和比对逻辑独立成模块。
