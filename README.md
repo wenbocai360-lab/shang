@@ -219,3 +219,68 @@ make clean
 
 > 最小可运行版本：`filtfilt68_top + iir4_fixed + 双端口RAM(或寄存器数组)` 就能跑通；
 > 为了工程可维护性，建议把地址反转、缓存和比对逻辑独立成模块。
+
+
+### 是否必须写 8 个模块？
+
+不是“必须”。8 个模块是**工程化推荐拆分**，不是硬性要求。你可以按两阶段推进：
+
+- **最小可运行版（先过功能）**：
+  - `iir4_fixed`
+  - `filtfilt68_top`
+  - RAM/寄存器数组（可先内嵌在 top）
+
+- **课程设计/答辩版（更规范）**：
+  - 再把 `reverse_addr_gen / input_buffer / work_buffer / output_buffer / coeff_rom / golden_checker` 拆出去
+
+这样可以先保证“能跑通 + 能对比”，再做结构优化。
+
+### Quartus 里如何落地（从建工程到验收）
+
+1. **建工程**
+   - Quartus -> New Project Wizard
+   - 选择 FPGA 型号（按你的开发板，如 Cyclone IV/V）
+   - 加入 RTL 文件：`rtl/iir4_fixed.v`、`rtl/filtfilt68_top.v`
+
+2. **设置顶层与时钟**
+   - 将 `filtfilt68_top` 设为 Top-Level Entity
+   - 用板卡主时钟（例如 50MHz）作为 `clk`
+   - `rst_n` 接按键或上电复位逻辑
+
+3. **引脚分配（Pin Planner）**
+   - 给 `clk/rst_n/start/in_valid/in_data/out_valid/out_data/done` 分配管脚
+   - 若 `in_data/out_data` 位宽较大，建议先用 testbench 验证；上板时可改成 FIFO/UART 接口
+
+4. **先做功能仿真（强烈建议）**
+   - ModelSim/Questa 联合仿真
+   - testbench 流程：
+     1) 拉高 `start`
+     2) 连续 68 拍送 `in_valid=1` + `in_data`
+     3) 等 `done`
+     4) 在 `out_valid` 时采样 68 点输出
+   - 将输出与 MATLAB 黄金数据对比（最大绝对误差）
+
+5. **综合与时序**
+   - 运行 Analysis & Synthesis、Fitter、TimeQuest
+   - 检查：
+     - 是否有时序违例（Setup/Hold）
+     - DSP、ALM、RAM 资源是否在板卡预算内
+
+6. **下载上板与联调**
+   - Programmer 下载 `.sof`
+   - 用 SignalTap 抓关键信号：`state/rd_ptr/wr_ptr/out_valid/out_data/done`
+   - 若输出接口是 UART/FIFO，可回传到 PC 与 MATLAB 再比一次
+
+### 建议的“最终实现要求”（可写进毕设验收指标）
+
+- **功能正确性**：
+  - 对固定 68 点测试向量，硬件输出与 MATLAB `filtfilt` 对齐
+- **精度指标**：
+  - 给出 `max_abs_error`（例如 <= 1e-3，按定点位宽可调整）
+- **性能指标**：
+  - 给出总延迟（从 start 到 done 的时钟周期）
+  - 给出吞吐率（每 68 点一帧的处理时间）
+- **资源指标**：
+  - DSP/ALM/RAM 使用率
+- **工程指标**：
+  - 提供 testbench + 黄金向量 + 自动比对脚本
