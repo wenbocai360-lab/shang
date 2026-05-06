@@ -172,3 +172,10 @@ make clean
 
 - MATLAB 导出同一组 68 点输入的 `filtfilt` 输出（double 精度）
 - 在 C 侧读取该输出作为参考值，调用 `max_abs_error()` 统计最大绝对误差
+
+
+### Verilog 代码生成（硬件版）
+
+- `rtl/iir4_fixed.v`：固定系数四阶 IIR（Q8.24）。
+- `rtl/filtfilt68_top.v`：68 点批处理 `filtfilt` 顶层 FSM（LOAD -> FWD -> REV1 -> BWD -> REV2OUT）。
+- 使用方式：在 testbench 中按 `start/in_valid/in_data` 灌入 68 点，等待 `done`，在 `out_valid` 时采样输出。
