@@ -133,3 +133,42 @@ wire [inst_sig_width+inst_exp_width:0] z3 = $shortrealtobits(-0.1825551490104656
 - 第 4 行：默认目标 `all`
 - 第 6~7 行：如何把 `src/main.c` 与 `src/filtfilt_fixed.c` 链接成 `filtfilt_demo`
 - 第 9~10 行：清理目标
+
+
+### 如何使用这个工程（快速上手）
+
+1. 编译：
+
+```bash
+make
+```
+
+2. 运行 demo：
+
+```bash
+./filtfilt_demo
+```
+
+运行后会输出 68 行 `索引,滤波值`（CSV 形式），例如：
+
+```text
+0,0.900731251183885
+1,1.314300976585985
+```
+
+3. 清理编译产物：
+
+```bash
+make clean
+```
+
+4. 若你要替换为自己的 68 点输入：
+
+- 打开 `src/main.c`
+- 把 `in[i] = (double)i;` 改成你的输入数据来源（如数组/文件读入）
+- 重新 `make && ./filtfilt_demo`
+
+5. 若要与 MATLAB 对比：
+
+- MATLAB 导出同一组 68 点输入的 `filtfilt` 输出（double 精度）
+- 在 C 侧读取该输出作为参考值，调用 `max_abs_error()` 统计最大绝对误差
