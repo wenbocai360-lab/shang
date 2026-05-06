@@ -622,3 +622,37 @@ vsim -c -do run_tb_filtfilt68_hw.do
 ```
 
 如果命令跑完并打印 `MAX_ABS_ERR`，说明“代码可编译 + 仿真流程已打通”。
+
+
+## FAQ：需要先把这些文件下载到本地吗？
+
+**是的，建议先下载到本地。**
+
+因为你要在 Quartus/ModelSim 里做：
+
+- 工程建库
+- RTL 编译
+- testbench 仿真
+- （可选）上板下载
+
+这些都依赖本地文件路径。
+
+### 最小需要的文件
+
+- `rtl/01_iir4_df2t_fixed.v`
+- `rtl/filtfilt68_hw.v`
+- `tb/tb_filtfilt68_hw.sv`
+- `sim/run_tb_filtfilt68_hw.do`
+
+### 推荐做法
+
+1. 整个仓库打包或 `git clone` 到本地；
+2. 不要只复制单个文件，避免路径引用出错；
+3. 在本地目录里执行：
+
+```bash
+cd sim
+vsim -c -do run_tb_filtfilt68_hw.do
+```
+
+如果你已经在本地有这些文件，就不需要重复下载。
