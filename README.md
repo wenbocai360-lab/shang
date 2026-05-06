@@ -284,3 +284,12 @@ make clean
   - DSP/ALM/RAM 使用率
 - **工程指标**：
   - 提供 testbench + 黄金向量 + 自动比对脚本
+
+
+### 分模块代码生成进度
+
+- ✅ 第 1 个模块：`rtl/01_iir4_df2t_fixed.v`
+  - 功能：四阶 IIR（Direct Form II Transposed）
+  - 输入：`in_valid + x_in`
+  - 输出：`out_valid + y_out`
+  - 控制：`clr_state` 可在前向/反向滤波切换时重装 `zi`
