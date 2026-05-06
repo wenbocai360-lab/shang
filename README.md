@@ -440,3 +440,46 @@ make clean
 - `tb/tb_filtfilt68_hw.sv`：使用老师给的 68 点输入/输出做逐点误差比对，打印 `MAX_ABS_ERR`。
 
 本版是定点 Q8.24 可综合路径，适合先在 Quartus + ModelSim 跑通流程；DW 浮点版可在该 FSM 基础上替换 IIR 内核。
+
+
+## 你要的仿真脚本 + Quartus 操作步骤
+
+### A) ModelSim/Questa 一键仿真脚本
+
+新增脚本：`sim/run_tb_filtfilt68_hw.do`
+
+使用方法：
+
+```bash
+cd sim
+vsim -c -do run_tb_filtfilt68_hw.do
+```
+
+脚本会自动：
+
+1. 建立 `work` 库
+2. 编译：
+   - `rtl/01_iir4_df2t_fixed.v`
+   - `rtl/filtfilt68_hw.v`
+   - `tb/tb_filtfilt68_hw.sv`
+3. 运行 testbench 到结束
+4. 终端打印每点误差和 `MAX_ABS_ERR`
+
+### B) Quartus + ModelSim 联调步骤（可直接照做）
+
+1. Quartus 新建工程（目标器件选你的开发板型号）。
+2. `Project -> Add/Remove Files in Project` 加入：
+   - `rtl/01_iir4_df2t_fixed.v`
+   - `rtl/filtfilt68_hw.v`
+3. 顶层设为 `filtfilt68_hw`。
+4. 若只做功能仿真：打开 ModelSim，在 `sim/` 下执行：
+   - `vsim -c -do run_tb_filtfilt68_hw.do`
+5. 若要上板：
+   - 在 Quartus 分配时钟和 I/O 管脚（`clk/rst_n/start/in_valid/in_data/out_valid/out_data/done`）
+   - 运行 Analysis & Synthesis / Fitter / TimeQuest
+   - Programmer 下载 `.sof`
+
+### C) 你在日志里重点看两项
+
+- `MAX_ABS_ERR`：和老师参考输出的最大绝对误差
+- `done` 是否按预期拉高，且输出点数是否恰好 68 点
